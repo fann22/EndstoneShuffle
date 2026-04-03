@@ -8,58 +8,19 @@ on:
     
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-22.04]
-        build_type: [Release, RelWithDebInfo]
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Clang (Linux)
-      if: matrix.os == 'ubuntu-22.04'
-      run: sudo apt-get update && sudo apt-get install -y clang
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
 
-    - name: Configure CMake (Linux)
-      if: matrix.os == 'ubuntu-22.04'
-      run: |
-        export CC=clang
-        export CXX=clang++
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
-
-    - name: Configure CMake (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="/Z7" -DCMAKE_C_FLAGS_RELWITHDEBINFO="/Z7"
-          
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}}
+      run: cmake --build ${{github.workspace}}/build --config Release
 
-    - name: Upload Artifact (Windows - Release)
-      if: matrix.os == 'windows-latest' && matrix.build_type == 'Release'
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: endstone_shuffle_windows
         path: ${{github.workspace}}/build/Release/stone_shuffle_windows.dll
-
-    - name: Upload Artifact (Windows - Debug)
-      if: matrix.os == 'windows-latest' && matrix.build_type == 'RelWithDebInfo'
-      uses: actions/upload-artifact@v4
-      with:
-        name: endstone_shuffle_windows_debug
-        path: ${{github.workspace}}/build/RelWithDebInfo/stone_shuffle_windows_debug.dll
-
-    - name: Upload Artifact (Linux - Release)
-      if: matrix.os == 'ubuntu-22.04' && matrix.build_type == 'Release'
-      uses: actions/upload-artifact@v4
-      with:
-        name: endstone_shuffle_linux
-        path: ${{github.workspace}}/build/stone_shuffle_linux.so
-
-    - name: Upload Artifact (Linux - Debug)
-      if: matrix.os == 'ubuntu-22.04' && matrix.build_type == 'RelWithDebInfo'
-      uses: actions/upload-artifact@v4
-      with:
-        name: endstone_shuffle_linux_debug
-        path: ${{github.workspace}}/build/stone_shuffle_linux_debug.so
