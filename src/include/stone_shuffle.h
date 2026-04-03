@@ -4,44 +4,49 @@
 
 #pragma once
 
-#include <random>
+#include <chrono>
+#include <filesystem>
 #include <endstone/plugin/plugin.h>
 #include <endstone/event/server/server_list_ping_event.h>
-#include <iostream>
 
 #include "json_loader.h"
 
 class StoneShuffle : public endstone::Plugin {
 public:
-    StoneShuffle() : loader(JsonLoader(std::filesystem::current_path().string() + "/StoneShuffle/config.json")), currentIndex(0), lastShuffled(0) {}
+    StoneShuffle()
+        : loader(JsonLoader(std::filesystem::current_path().string() + "/StoneShuffle/config.json")),
+          currentIndex(0),
+          lastShuffled(0) {}
 
     void onEnable() override {
+        getLogger().info("StoneShuffle enabled!");
         registerEvent(&StoneShuffle::onServerListPingEvent, *this);
     }
 
+    void onDisable() override {
+        getLogger().info("StoneShuffle disabled.");
+    }
+
     void onServerListPingEvent(endstone::ServerListPingEvent& event) {
-        long milliseconds_since_epoch =
-                std::chrono::system_clock::now().time_since_epoch() /
-                std::chrono::milliseconds(1);
+        const auto& motds = loader.getStringList();
+        if (motds.empty()) return;
 
-        long refreshIntervalMilliseconds = loader.getRefreshInterval() * 1000;
+        long now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
 
-        if (lastShuffled + refreshIntervalMilliseconds < milliseconds_since_epoch) {
-            lastShuffled = milliseconds_since_epoch;
+        long refreshMs = loader.getRefreshInterval() * 1000L;
 
-            if (currentIndex >= loader.getStringList().size()) {
-                currentIndex = 0;
-            } else {
-                currentIndex++;
-            }
+        if (lastShuffled + refreshMs < now) {
+            lastShuffled = now;
+            currentIndex = (currentIndex + 1) % motds.size();
         }
 
-        event.setMotd(loader.getStringList()[currentIndex]);
+        event.setMotd(motds[currentIndex]);
     }
 
 private:
     JsonLoader loader;
-
-    int currentIndex;
+    size_t currentIndex;
     long lastShuffled;
 };
